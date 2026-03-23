@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evolución — Gestión</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f3;--surface:#fff;--surface2:#f0f0ee;
+  --border:#e2e2de;--border2:#d0d0ca;
+  --text:#1a1a18;--text2:#6b6b65;--text3:#9b9b95;
+  --accent:#1a1a18;
+  --green:#2d6a4f;--green-bg:#d8f3dc;
+  --amber:#92400e;--amber-bg:#fef3c7;
+  --red:#991b1b;--red-bg:#fee2e2;
+  --blue:#1e40af;--blue-bg:#dbeafe;
+  --purple:#5b21b6;--purple-bg:#ede9fe;
+  --gray-bg:#f3f4f6;--gray:#374151;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;min-height:100vh}
+
+/* LOGIN */
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px;width:100%;max-width:380px}
+.login-brand h1{font-size:24px;font-weight:600;margin-bottom:4px}
+.login-brand p{font-size:13px;color:var(--text2);margin-bottom:28px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:500;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:'Inter',sans-serif;transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.field textarea{resize:vertical;min-height:64px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn-full{width:100%;padding:11px;border-radius:10px;background:var(--accent);color:#fff;border:none;font-size:13px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity .15s;margin-top:4px}
+.btn-full:hover{opacity:.85}
+.login-err{color:var(--red);font-size:12px;margin-top:8px;text-align:center;min-height:18px}
+
+/* LAYOUT */
+#mainApp{display:none}
+#mainApp.show{display:flex;min-height:100vh}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:10;overflow-y:auto}
+.s-brand{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.s-brand h2{font-size:16px;font-weight:600}
+.s-brand p{font-size:11px;color:var(--text2);margin-top:2px}
+.s-user{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
+.s-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.s-uname{font-size:12px;font-weight:500}
+.s-urole{font-size:10px;color:var(--text3)}
+.nav{flex:1;padding:8px}
+.nav-sec{font-size:10px;color:var(--text3);padding:10px 8px 4px;letter-spacing:.07em;text-transform:uppercase;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2);margin-bottom:1px;transition:all .1s;user-select:none}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent);color:#fff}
+.nav-item.locked{opacity:.3;cursor:not-allowed}
+.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.nav-bottom{padding:8px;border-top:1px solid var(--border)}
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:13px 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+.topbar h2{font-size:15px;font-weight:600}
+.topbar p{font-size:11px;color:var(--text2);margin-top:1px}
+.topbar-actions{display:flex;gap:8px}
+.btn{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:'Inter',sans-serif;transition:all .1s}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{opacity:.85}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:var(--red-bg)}
+.btn-sm{padding:5px 11px;font-size:11px}
+.content{padding:20px 22px;flex:1}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.metric-label{font-size:11px;color:var(--text2);font-weight:500}
+.metric-val{font-size:22px;font-weight:600;margin-top:3px}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:1px}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto}
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sec-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px}
+th{padding:8px 11px;text-align:left;font-size:10px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap;letter-spacing:.04em;text-transform:uppercase}
+td{padding:8px 11px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;white-space:nowrap;cursor:pointer}
+.b-green{background:var(--green-bg);color:var(--green)}
+.b-amber{background:var(--amber-bg);color:var(--amber)}
+.b-red{background:var(--red-bg);color:var(--red)}
+.b-blue{background:var(--blue-bg);color:var(--blue)}
+.b-gray{background:var(--gray-bg);color:var(--gray)}
+.b-purple{background:var(--purple-bg);color:var(--purple)}
+.tec-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.action-btns{display:flex;gap:4px}
+
+/* CALENDAR */
+.cal-nav{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.cal-nav button{padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif}
+.cal-nav h3{font-size:14px;font-weight:600;flex:1;text-align:center}
+.cal-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.cal-grid{display:grid;grid-template-columns:52px repeat(6,1fr)}
+.cal-head{background:var(--surface2);padding:8px 6px;text-align:center;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
+.cal-head:last-child,.cal-time:last-child{border-right:none}
+.cal-time{background:var(--surface2);padding:5px 7px;text-align:right;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
+.cal-cell{padding:2px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);min-height:44px;cursor:pointer;transition:background .1s}
+.cal-cell:hover{background:#fafafa}
+.cal-cell:last-child{border-right:none}
+.cal-ev{border-radius:5px;padding:3px 6px;font-size:10px;font-weight:500;margin-bottom:2px;cursor:pointer;line-height:1.3}
+.ev-red{background:var(--red-bg);color:var(--red)}
+.ev-green{background:var(--green-bg);color:var(--green)}
+.ev-amber{background:var(--amber-bg);color:var(--amber)}
+
+/* WEEKLY */
+.weekly-wrap{display:flex;flex-direction:column;gap:12px}
+.weekly-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.weekly-sec-head{padding:11px 16px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.weekly-sec-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+.weekly-body{padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+.weekly-user-block{border-left:3px solid var(--accent);padding-left:12px}
+.weekly-user-name{font-size:11px;font-weight:600;margin-bottom:5px}
+
+/* DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.dash-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.dash-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bar-label{font-size:11px;color:var(--text);width:80px;flex-shrink:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:8px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px}
+.bar-val{font-size:11px;color:var(--text2);min-width:40px;text-align:right;font-weight:500}
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:14px}
+.tab{padding:8px 16px;font-size:12px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+
+/* MODAL */
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center;padding:16px}
+.modal-backdrop.show{display:flex}
+.modal{background:var(--surface);border-radius:16px;border:1px solid var(--border);padding:24px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:16px}
+.modal-divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+.modal-section-title{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.role-selector{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.role-opt{padding:12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;text-align:center;transition:all .15s}
+.role-opt:hover{border-color:var(--border2)}
+.role-opt.sel{border-color:var(--accent);background:var(--surface)}
+.role-opt h4{font-size:13px;font-weight:600;margin-bottom:3px}
+.role-opt p{font-size:10px;color:var(--text2);line-height:1.4}
+
+/* WEEKLY SIDE PANEL */
+.side-panel{position:fixed;right:0;top:0;bottom:0;width:360px;background:var(--surface);border-left:1px solid var(--border);z-index:50;transform:translateX(100%);transition:transform .25s;display:flex;flex-direction:column}
+.side-panel.open{transform:translateX(0)}
+.side-panel-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.side-panel-head h3{font-size:14px;font-weight:600}
+.side-panel-body{flex:1;overflow-y:auto;padding:16px 20px}
+.side-panel-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+.close-btn{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text2);padding:2px 6px}
+
+/* ESTADO SELECTOR */
+.estado-select{padding:3px 7px;border-radius:6px;border:1px solid var(--border);font-size:11px;font-family:'Inter',sans-serif;background:var(--surface2);cursor:pointer}
+
+/* PAGE */
+.page{display:none}
+.page.show{display:block}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text2);font-size:13px}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-right:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.empty{padding:32px;text-align:center;color:var(--text3);font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">
+      <h1>Evolución</h1>
+      <p>Gestión de servicios técnicos</p>
+    </div>
+    <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="tu@email.com"></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="loginPass" placeholder="••••••••"></div>
+    <button class="btn-full" onclick="doLogin()">Ingresar</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="mainApp">
+  <div class="sidebar">
+    <div class="s-brand"><h2>Evolución</h2><p>Gestión de servicios</p></div>
+    <div class="s-user">
+      <div class="s-av" id="sideAv"></div>
+      <div><div class="s-uname" id="sideName"></div><div class="s-urole" id="sideRole"></div></div>
+    </div>
+    <div class="nav">
+      <div class="nav-sec">Principal</div>
+      <div class="nav-item active" onclick="showPage('panel',this)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".8"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".8"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".4"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".4"/></svg>
+        Panel
+      </div>
+      <div class="nav-item" onclick="showPage('calendar',this)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 1v4M11 1v4M1 7h14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Calendario
+      </div>
+      <div class="nav-item" onclick="showPage('trabajos',this)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Trabajos
+      </div>
+      <div class="nav-item" onclick="showPage('presupuestos',this)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3"/><path d="M5 6h6M5 9h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Presupuestos
+      </div>
+      <div class="nav-sec">Técnicos</div>
+      <div id="tecNav"></div>
+      <div class="nav-sec">Reportes</div>
+      <div class="nav-item" onclick="showPage('weekly',this)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 13V9M5 13V6M8 13V8M11 13V4M14 13V2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Weekly
+      </div>
+      <div class="nav-item" id="navDash" onclick="goDash()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 8L5.5 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-sec">Sistema</div>
+      <div class="nav-item" id="navUsers" onclick="goUsers()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M13 8v4M11 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Usuarios
+      </div>
+    </div>
+    <div class="nav-bottom">
+      <div class="nav-item" onclick="doLogout()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 8H3M6 5l-3 3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 3h5v10H8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Salir
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div><h2 id="pageTitle">Panel</h2><p id="pageSub"></p></div>
+      <div class="topbar-actions" id="topActions">
+        <button class="btn" onclick="openModal('weekly-modal')">Generar Weekly</button>
+        <button class="btn btn-primary" onclick="openModal('trabajo-modal');resetTrabajoForm()">+ Agregar trabajo</button>
+      </div>
+    </div>
+
+    <!-- PANEL -->
+    <div id="page-panel" class="page show content">
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">Trabajos semana</div><div class="metric-val" id="mTotal">—</div><div class="metric-sub">cargados</div></div>
+        <div class="metric"><div class="metric-label">Terminados</div><div class="metric-val" id="mTerm">—</div><div class="metric-sub" id="mTermPct"></div></div>
+        <div class="metric"><div class="metric-label">Pendientes</div><div class="metric-val" id="mPend">—</div><div class="metric-sub">sin cerrar</div></div>
+        <div class="metric"><div class="metric-label">Presupuestos</div><div class="metric-val" id="mPres">—</div><div class="metric-sub">activos</div></div>
+      </div>
+      <div class="sec-header">
+        <span class="sec-title">Trabajos de la semana</span>
+        <span style="font-size:11px;color:var(--text3)">Hacé clic en el estado para cambiarlo</span>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Cliente</th><th>Tarea</th><th>Resultado</th><th>Técnico</th><th>Estado</th><th>Notas</th><th>→ Weekly</th><th></th>
+        </tr></thead><tbody id="panelTbody"><tr><td colspan="8"><div class="loading"><div class="spinner"></div>Cargando...</div></td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div id="page-calendar" class="page content">
+      <div class="cal-nav">
+        <button onclick="calPrev()">← Anterior</button>
+        <h3 id="calTitle"></h3>
+        <button onclick="calNext()">Siguiente →</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('trabajo-modal');resetTrabajoForm()">+ Agregar</button>
+      </div>
+      <div class="cal-wrap">
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+    </div>
+
+    <!-- TRABAJOS -->
+    <div id="page-trabajos" class="page content">
+      <div class="sec-header">
+        <span class="sec-title" id="trabajosTitle">Todos los trabajos</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('trabajo-modal');resetTrabajoForm()">+ Agregar trabajo</button>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Cliente</th><th>Tarea</th><th>Resultado</th><th>Técnico</th>
+          <th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th>
+          <th>Precio</th><th>Notas</th><th></th>
+        </tr></thead><tbody id="trabajosTbody"><tr><td colspan="13"><div class="loading"><div class="spinner"></div>Cargando...</div></td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- PRESUPUESTOS -->
+    <div id="page-presupuestos" class="page content">
+      <div class="sec-header">
+        <span class="sec-title">Presupuestos</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('pres-modal');resetPresForm()">+ Agregar presupuesto</button>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Cliente</th><th>Descripción</th><th>Monto</th><th>Estado</th><th>Responsable</th><th>Novedad Weekly</th><th></th>
+        </tr></thead><tbody id="presTbody"><tr><td colspan="7"><div class="loading"><div class="spinner"></div>Cargando...</div></td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- WEEKLY -->
+    <div id="page-weekly" class="page content">
+      <div class="weekly-wrap" id="weeklyContent"><div class="loading"><div class="spinner"></div>Cargando...</div></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-primary" onclick="descargarWeekly()">Descargar .doc</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page content">
+      <div class="tabs">
+        <div class="tab active" onclick="setDashTab('semana',this)">Esta semana</div>
+        <div class="tab" onclick="setDashTab('mes',this)">Este mes</div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">Trabajos</div><div class="metric-val" id="dTrab">—</div><div class="metric-sub" id="dTrabSub"></div></div>
+        <div class="metric"><div class="metric-label">Terminados</div><div class="metric-val" id="dTerm">—</div><div class="metric-sub"></div></div>
+        <div class="metric"><div class="metric-label">Pendientes</div><div class="metric-val" id="dPend2">—</div><div class="metric-sub"></div></div>
+        <div class="metric"><div class="metric-label">Presupuestos activos</div><div class="metric-val" id="dPres2">—</div><div class="metric-sub"></div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-card"><div class="dash-title">Trabajos por técnico</div><div id="barTec"></div></div>
+        <div class="dash-card"><div class="dash-title">Estados</div><div id="barEstados"></div></div>
+        <div class="dash-card"><div class="dash-title">Clientes más frecuentes</div><div id="barClientes"></div></div>
+        <div class="dash-card"><div class="dash-title">Presupuestos por estado</div><div id="barPres"></div></div>
+      </div>
+    </div>
+
+    <!-- USUARIOS -->
+    <div id="page-usuarios" class="page content">
+      <div class="sec-header">
+        <span class="sec-title">Usuarios</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('user-modal')">+ Nuevo usuario</button>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Dashboard</th><th>Usuarios</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="usuariosTbody"><tr><td colspan="7"><div class="loading"><div class="spinner"></div>Cargando...</div></td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SIDE PANEL WEEKLY -->
+<div class="side-panel" id="weeklyPanel">
+  <div class="side-panel-head">
+    <h3>→ Agregar al Weekly</h3>
+    <button class="close-btn" onclick="closeSidePanel()">×</button>
+  </div>
+  <div class="side-panel-body">
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px" id="weeklyPanelCliente"></p>
+    <div class="field"><label>Novedad a reportar</label><textarea id="wp_novedad" placeholder="¿Hay algo relevante de este trabajo?"></textarea></div>
+    <div class="field"><label>Dificultad / problema</label><textarea id="wp_dificultad" placeholder="¿Hubo alguna traba?"></textarea></div>
+    <div class="field"><label>Avance de proyecto</label><textarea id="wp_proyecto" placeholder="Si es parte de un proyecto..."></textarea></div>
+    <div class="field"><label>Gran cliente — novedad</label><textarea id="wp_gran_cliente" placeholder="¿Qué reportás de este cliente?"></textarea></div>
+    <div class="field"><label>Ventas / cierres</label><textarea id="wp_ventas" placeholder="¿Hubo algún cierre o cliente nuevo?"></textarea></div>
+    <div class="field"><label>Compras</label><textarea id="wp_compras" placeholder="¿Compraste algo para este trabajo?"></textarea></div>
+  </div>
+  <div class="side-panel-foot">
+    <button class="btn" onclick="closeSidePanel()">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveWeeklyPanel()">Guardar</button>
+  </div>
+</div>
+
+<!-- MODAL TRABAJO -->
+<div class="modal-backdrop" id="trabajo-modal">
+  <div class="modal">
+    <div class="modal-title" id="trabajoModalTitle">Nuevo trabajo</div>
+    <input type="hidden" id="trabajoId">
+    <div class="field-row">
+      <div class="field"><label>Cliente</label><input type="text" id="t_cliente" placeholder="Nombre del cliente"></div>
+      <div class="field"><label>Técnico</label><select id="t_tecnico"><option value="">Seleccionar...</option></select></div>
+    </div>
+    <div class="field"><label>Tarea</label><input type="text" id="t_tarea" placeholder="¿Qué hay que hacer?"></div>
+    <div class="field"><label>Resultado</label><input type="text" id="t_resultado" placeholder="¿Qué se hizo?"></div>
+    <div class="field-row">
+      <div class="field"><label>Estado</label>
+        <select id="t_estado">
+          <option value="">Sin estado</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="en-proceso">En proceso</option>
+          <option value="terminado">Terminado</option>
+          <option value="en-espera">En espera cliente</option>
+          <option value="cobrado">Cobrado</option>
+          <option value="terminado-mensual">Terminado / Mensual</option>
+          <option value="entregado">Entregado</option>
+          <option value="confirmado">Confirmado</option>
+        </select>
+      </div>
+      <div class="field"><label>Fecha</label>
+        <input type="date" id="t_dia">
+      </div>
+    </div>
+    <div class="field"><label>Precio</label><input type="text" id="t_precio" placeholder="$0 o USD 0"></div>
+    <div class="field"><label>Notas internas</label><textarea id="t_notas" placeholder="Notas que no van al Weekly..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('trabajo-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTrabajo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRESUPUESTO -->
+<div class="modal-backdrop" id="pres-modal">
+  <div class="modal">
+    <div class="modal-title" id="presModalTitle">Nuevo presupuesto</div>
+    <input type="hidden" id="presId">
+    <div class="field-row">
+      <div class="field"><label>Cliente</label><input type="text" id="p_cliente" placeholder="Nombre del cliente"></div>
+      <div class="field"><label>Responsable</label><select id="p_tecnico"><option value="">Seleccionar...</option></select></div>
+    </div>
+    <div class="field"><label>Descripción</label><input type="text" id="p_desc" placeholder="¿Qué se presupuesta?"></div>
+    <div class="field-row">
+      <div class="field"><label>Monto</label><input type="text" id="p_monto" placeholder="$0 o USD 0"></div>
+      <div class="field"><label>Estado</label>
+        <select id="p_estado">
+          <option value="activo">Activo</option>
+          <option value="entregado">Entregado</option>
+          <option value="confirmado">Confirmado</option>
+          <option value="en-proceso">En proceso</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="rechazado">Rechazado</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Novedad para Weekly</label><textarea id="p_weekly" placeholder="¿Hay algo que reportar?"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('pres-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePres()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL USUARIO -->
+<div class="modal-backdrop" id="user-modal">
+  <div class="modal">
+    <div class="modal-title">Nuevo usuario</div>
+    <div class="field-row">
+      <div class="field"><label>Nombre</label><input type="text" id="u_nombre" placeholder="Nombre completo"></div>
+      <div class="field"><label>Email</label><input type="email" id="u_email" placeholder="email@dominio.com"></div>
+    </div>
+    <div class="field"><label>Contraseña inicial</label><input type="password" id="u_pass" placeholder="Mínimo 6 caracteres"></div>
+    <div class="field"><label>Rol</label></div>
+    <div class="role-selector">
+      <div class="role-opt sel" id="roleUser" onclick="selRole('user')">
+        <h4>User</h4>
+        <p>Trabajos, presupuestos y Weekly</p>
+      </div>
+      <div class="role-opt" id="roleAdmin" onclick="selRole('admin')">
+        <h4>Admin</h4>
+        <p>Acceso total + Dashboard + Usuarios</p>
+      </div>
+    </div>
+    <div class="login-err" id="userErr"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('user-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="createUser()">Crear usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL WEEKLY GENERAR -->
+<div class="modal-backdrop" id="weekly-modal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title">Generar Weekly</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Revisá el estado de carga de cada técnico antes de generar.</p>
+    <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Estado de carga</div>
+      <div id="weeklyStatusList" style="display:flex;flex-direction:column;gap:6px;font-size:12px"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('weekly-modal')">Cancelar</button>
+      <button class="btn" onclick="closeModal('weekly-modal');showPage('weekly',null)">Ver y editar</button>
+      <button class="btn btn-primary" onclick="closeModal('weekly-modal');descargarWeekly()">Descargar .doc</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://oxqhofnletlgprfgzzaa.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94cWhvZm5sZXRsZ3ByZmd6emFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNDE3ODAsImV4cCI6MjA4OTcxNzc4MH0.oGmMAyLgr3LWnGM1VKakSxDxKa8k-zgv65FA5v0aink';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const ESTADOS = {
+  'pendiente':{cls:'b-red',label:'Pendiente'},
+  'en-proceso':{cls:'b-amber',label:'En proceso'},
+  'terminado':{cls:'b-green',label:'Terminado'},
+  'en-espera':{cls:'b-gray',label:'En espera'},
+  'cobrado':{cls:'b-green',label:'Cobrado'},
+  'terminado-mensual':{cls:'b-green',label:'Term./Mensual'},
+  'entregado':{cls:'b-gray',label:'Entregado'},
+  'confirmado':{cls:'b-blue',label:'Confirmado'},
+  'activo':{cls:'b-blue',label:'Activo'},
+  'rechazado':{cls:'b-red',label:'Rechazado'},
+};
+
+const TEC_COLORS = ['#1d4ed8','#065f46','#9a3412','#5b21b6','#92400e','#831843','#374151','#0f766e'];
+
+let currentUser = null;
+let currentProfile = null;
+let allProfiles = [];
+let trabajos = [];
+let presupuestos = [];
+let calWeekOffset = 0;
+let tecFilter = null;
+let weeklyPanelTrabajoId = null;
+let selectedRole = 'user';
+
+function initials(n){return (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}
+function getWeekStart(offset=0){
+  const d=new Date();
+  const day=d.getDay();
+  const monday=new Date(d);
+  monday.setDate(d.getDate()-((day+6)%7)+(offset*7));
+  monday.setHours(0,0,0,0);
+  return monday;
+}
+function formatWeekLabel(d){
+  const end=new Date(d);end.setDate(d.getDate()+5);
+  const fmt=x=>x.toLocaleDateString('es-UY',{day:'numeric',month:'short'});
+  return `${fmt(d)} — ${fmt(end)} ${end.getFullYear()}`;
+}
+function badge(est){if(!est||!ESTADOS[est])return '<span style="color:var(--text3)">—</span>';const e=ESTADOS[est];return `<span class="badge ${e.cls}">${e.label}</span>`}
+function tecTag(nombre,color){return `<span class="tec-tag"><span class="nav-dot" style="background:${color||'#888'}"></span>${nombre||'—'}</span>`}
+function getTecColor(id){const p=allProfiles.find(x=>x.id===id);if(!p)return '#888';const i=allProfiles.indexOf(p);return TEC_COLORS[i%TEC_COLORS.length]}
+
+// AUTH
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  document.getElementById('loginErr').textContent='';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){document.getElementById('loginErr').textContent='Email o contraseña incorrectos';return;}
+  currentUser=data.user;
+  await loadProfile();
+  startApp();
+}
+
+async function loadProfile(){
+  const {data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+  currentProfile=data;
+}
+
+async function loadAllProfiles(){
+  const {data}=await sb.from('profiles').select('*').eq('activo',true).order('nombre');
+  allProfiles=data||[];
+}
+
+function startApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('mainApp').classList.add('show');
+  setupSidebar();
+  loadData();
+}
+
+function setupSidebar(){
+  const av=document.getElementById('sideAv');
+  av.textContent=initials(currentProfile?.nombre||currentUser.email);
+  av.style.background=TEC_COLORS[0]+'22';
+  av.style.color=TEC_COLORS[0];
+  document.getElementById('sideName').textContent=currentProfile?.nombre||currentUser.email;
+  document.getElementById('sideRole').textContent=currentProfile?.role==='admin'?'Admin':'User';
+  const isAdmin=currentProfile?.role==='admin';
+  if(!isAdmin){
+    document.getElementById('navDash').classList.add('locked');
+    document.getElementById('navUsers').classList.add('locked');
+  }
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  currentUser=null;currentProfile=null;trabajos=[];presupuestos=[];
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('mainApp').classList.remove('show');
+}
+
+// DATA
+async function loadData(){
+  await loadAllProfiles();
+  populateTecNav();
+  populateTecSelects();
+  const ws=getWeekStart();
+  const we=new Date(ws);we.setDate(ws.getDate()+6);
+  const wsStr=ws.toISOString().slice(0,10);
+  const weStr=we.toISOString().slice(0,10);
+  const [{data:t},{data:p}]=await Promise.all([
+    sb.from('trabajos').select('*').gte('semana_inicio',wsStr).lte('semana_inicio',weStr).order('created_at',{ascending:false}),
+    sb.from('presupuestos').select('*').order('created_at',{ascending:false})
+  ]);
+  trabajos=t||[];
+  presupuestos=p||[];
+  renderAll();
+}
+
+function populateTecNav(){
+  document.getElementById('tecNav').innerHTML=allProfiles.map((p,i)=>`
+    <div class="nav-item" onclick="filterTec('${p.id}','${p.nombre}',this)">
+      <div class="nav-dot" style="background:${TEC_COLORS[i%TEC_COLORS.length]}"></div>${p.nombre}
+    </div>`).join('');
+}
+
+function populateTecSelects(){
+  const opts=allProfiles.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+  document.getElementById('t_tecnico').innerHTML='<option value="">Seleccionar...</option>'+opts;
+  document.getElementById('p_tecnico').innerHTML='<option value="">Seleccionar...</option>'+opts;
+}
+
+function renderAll(){
+  renderPanel();
+  renderTrabajos();
+  renderPres();
+  renderWeekly();
+  renderDashboard();
+  renderUsuarios();
+  updateMetrics();
+}
+
+function updateMetrics(){
+  const list=tecFilter?trabajos.filter(t=>t.tecnico_id===tecFilter):trabajos;
+  const term=list.filter(t=>['terminado','cobrado','terminado-mensual'].includes(t.estado_vie||t.estado_sab||t.estado_jue||t.estado_mie||t.estado_mar||t.estado_lun));
+  const pend=list.filter(t=>{const last=t.estado_sab||t.estado_vie||t.estado_jue||t.estado_mie||t.estado_mar||t.estado_lun;return last==='pendiente'||last==='en-espera'});
+  document.getElementById('mTotal').textContent=list.length;
+  document.getElementById('mTerm').textContent=term.length;
+  document.getElementById('mTermPct').textContent=list.length?Math.round(term.length/list.length*100)+'%':'';
+  document.getElementById('mPend').textContent=pend.length;
+  document.getElementById('mPres').textContent=presupuestos.filter(p=>p.estado==='activo'||p.estado==='confirmado').length;
+}
+
+function lastEstado(t){return t.estado_sab||t.estado_vie||t.estado_jue||t.estado_mie||t.estado_mar||t.estado_lun||'';}
+
+function estadoSelector(t,dia){
+  const val=t['estado_'+dia]||'';
+  return `<select class="estado-select" onchange="updateEstado('${t.id}','${dia}',this.value)">
+    <option value="">—</option>
+    ${Object.entries(ESTADOS).map(([v,e])=>`<option value="${v}"${val===v?' selected':''}>${e.label}</option>`).join('')}
+  </select>`;
+}
+
+function renderPanel(){
+  const list=tecFilter?trabajos.filter(t=>t.tecnico_id===tecFilter):trabajos;
+  if(!list.length){document.getElementById('panelTbody').innerHTML='<tr><td colspan="8"><div class="empty">No hay trabajos esta semana</div></td></tr>';return;}
+  document.getElementById('panelTbody').innerHTML=list.map(t=>{
+    const last=lastEstado(t);
+    const color=getTecColor(t.tecnico_id);
+    const hasW=t.weekly_novedad||t.weekly_dificultad||t.weekly_proyecto||t.weekly_gran_cliente;
+    return `<tr>
+      <td style="font-weight:500">${t.cliente}</td>
+      <td style="color:var(--text2)">${t.tarea}</td>
+      <td style="color:var(--text2);font-size:11px">${t.resultado||'—'}</td>
+      <td>${tecTag(t.tecnico_nombre,color)}</td>
+      <td>${badge(last)}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:120px">${t.notas||'—'}</td>
+      <td><button class="btn btn-sm ${hasW?'btn-primary':''}" onclick="openWeeklyPanel('${t.id}')">${hasW?'✓ Weekly':'→ Weekly'}</button></td>
+      <td><div class="action-btns">
+        <button class="btn btn-sm" onclick="editTrabajo('${t.id}')">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTrabajo('${t.id}')">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTrabajos(){
+  const list=tecFilter?trabajos.filter(t=>t.tecnico_id===tecFilter):trabajos;
+  if(!list.length){document.getElementById('trabajosTbody').innerHTML='<tr><td colspan="13"><div class="empty">No hay trabajos</div></td></tr>';return;}
+  document.getElementById('trabajosTbody').innerHTML=list.map(t=>{
+    const color=getTecColor(t.tecnico_id);
+    return `<tr>
+      <td style="font-weight:500">${t.cliente}</td>
+      <td style="color:var(--text2)">${t.tarea}</td>
+      <td style="color:var(--text2);font-size:11px">${t.resultado||'—'}</td>
+      <td>${tecTag(t.tecnico_nombre,color)}</td>
+      <td>${estadoSelector(t,'lun')}</td>
+      <td>${estadoSelector(t,'mar')}</td>
+      <td>${estadoSelector(t,'mie')}</td>
+      <td>${estadoSelector(t,'jue')}</td>
+      <td>${estadoSelector(t,'vie')}</td>
+      <td>${estadoSelector(t,'sab')}</td>
+      <td style="font-weight:500;white-space:nowrap">${t.precio||'—'}</td>
+      <td style="font-size:11px;color:var(--text2)">${t.notas||'—'}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-sm" onclick="editTrabajo('${t.id}')">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTrabajo('${t.id}')">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPres(){
+  if(!presupuestos.length){document.getElementById('presTbody').innerHTML='<tr><td colspan="7"><div class="empty">No hay presupuestos</div></td></tr>';return;}
+  document.getElementById('presTbody').innerHTML=presupuestos.map(p=>{
+    const color=getTecColor(p.responsable_id);
+    return `<tr>
+      <td style="font-weight:500">${p.cliente}</td>
+      <td style="color:var(--text2)">${p.descripcion}</td>
+      <td style="font-weight:500">${p.monto||'—'}</td>
+      <td>${badge(p.estado)}</td>
+      <td>${tecTag(p.responsable_nombre,color)}</td>
+      <td style="font-size:11px;color:var(--text2)">${p.weekly_novedad||'—'}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-sm" onclick="editPres('${p.id}')">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="deletePres('${p.id}')">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderWeekly(){
+  const SECTIONS=[
+    {key:'novedad',label:'1. Novedades',field:'weekly_novedad'},
+    {key:'dificultad',label:'2. Dificultades',field:'weekly_dificultad'},
+    {key:'ventas',label:'3. Ventas — cierres y nuevos clientes',field:'weekly_ventas'},
+    {key:'compras',label:'4. Compras',field:'weekly_compras'},
+    {key:'gran_cliente',label:'5. Grandes clientes',field:'weekly_gran_cliente'},
+    {key:'proyecto',label:'6. Proyectos',field:'weekly_proyecto'},
+  ];
+  const tecs=allProfiles.filter(p=>p.role!=='admin'||true);
+  document.getElementById('weeklyContent').innerHTML=SECTIONS.map(s=>`
+    <div class="weekly-section">
+      <div class="weekly-sec-head"><span class="weekly-sec-title">${s.label}</span></div>
+      <div class="weekly-body">
+        ${tecs.map((p,i)=>{
+          const items=trabajos.filter(t=>t.tecnico_id===p.id&&t[s.field]).map(t=>t[s.field]).join(' / ');
+          const presItems=s.key==='novedad'?presupuestos.filter(x=>x.responsable_id===p.id&&x.weekly_novedad).map(x=>x.weekly_novedad).join(' / '):'';
+          const combined=[items,presItems].filter(Boolean).join(' / ')||'Sin novedades.';
+          return `<div class="weekly-user-block">
+            <div class="weekly-user-name" style="color:${TEC_COLORS[i%TEC_COLORS.length]}">${p.nombre}</div>
+            <textarea id="w_${s.key}_${p.id}">${combined}</textarea>
+          </div>`;
+        }).join('')}
+        <div class="weekly-user-block">
+          <div class="weekly-user-name" style="color:var(--text2)">RRHH / General</div>
+          <textarea id="w_${s.key}_general" placeholder="Novedades generales, ausencias...">Sin novedades.</textarea>
+        </div>
+      </div>
+    </div>`).join('');
+
+  // Weekly status for modal
+  document.getElementById('weeklyStatusList').innerHTML=tecs.map(p=>{
+    const hasData=trabajos.filter(t=>t.tecnico_id===p.id).some(t=>t.weekly_novedad||t.weekly_dificultad||t.weekly_proyecto);
+    return `<div style="display:flex;justify-content:space-between;align-items:center">
+      <span>${p.nombre}</span>
+      <span class="badge ${hasData?'b-green':'b-red'}">${hasData?'Con datos':'Sin datos'}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderDashboard(){
+  const list=trabajos;
+  document.getElementById('dTrab').textContent=list.length;
+  document.getElementById('dTerm').textContent=list.filter(t=>['terminado','cobrado','terminado-mensual'].includes(lastEstado(t))).length;
+  document.getElementById('dPend2').textContent=list.filter(t=>['pendiente','en-espera'].includes(lastEstado(t))).length;
+  document.getElementById('dPres2').textContent=presupuestos.filter(p=>['activo','confirmado'].includes(p.estado)).length;
+
+  // Por técnico
+  const maxT=Math.max(...allProfiles.map(p=>list.filter(t=>t.tecnico_id===p.id).length),1);
+  document.getElementById('barTec').innerHTML=allProfiles.map((p,i)=>{
+    const cnt=list.filter(t=>t.tecnico_id===p.id).length;
+    return `<div class="bar-row"><span class="bar-label">${p.nombre}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(cnt/maxT*100)}%;background:${TEC_COLORS[i%TEC_COLORS.length]}"></div></div>
+      <span class="bar-val">${cnt}</span></div>`;
+  }).join('');
+
+  // Estados
+  const estados=['terminado','en-proceso','pendiente','en-espera'];
+  const maxE=Math.max(...estados.map(e=>list.filter(t=>lastEstado(t)===e).length),1);
+  document.getElementById('barEstados').innerHTML=estados.map(e=>{
+    const cnt=list.filter(t=>lastEstado(t)===e).length;
+    const ec=ESTADOS[e];
+    return `<div class="bar-row"><span class="bar-label">${ec.label}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(cnt/maxE*100)}%;background:var(--accent)"></div></div>
+      <span class="bar-val">${cnt}</span></div>`;
+  }).join('');
+
+  // Clientes
+  const cliCount={};list.forEach(t=>{cliCount[t.cliente]=(cliCount[t.cliente]||0)+1});
+  const topCli=Object.entries(cliCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxC=topCli[0]?.[1]||1;
+  document.getElementById('barClientes').innerHTML=topCli.map(([c,n])=>`
+    <div class="bar-row"><span class="bar-label">${c}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxC*100)}%;background:var(--purple)"></div></div>
+      <span class="bar-val">${n}</span></div>`).join('')||'<div class="empty">Sin datos</div>';
+
+  // Presupuestos por estado
+  const presStates=['activo','entregado','confirmado','rechazado'];
+  const maxP=Math.max(...presStates.map(e=>presupuestos.filter(p=>p.estado===e).length),1);
+  document.getElementById('barPres').innerHTML=presStates.map(e=>{
+    const cnt=presupuestos.filter(p=>p.estado===e).length;
+    return `<div class="bar-row"><span class="bar-label">${ESTADOS[e]?.label||e}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(cnt/maxP*100)}%;background:var(--blue)"></div></div>
+      <span class="bar-val">${cnt}</span></div>`;
+  }).join('');
+}
+
+function renderUsuarios(){
+  if(!allProfiles.length){document.getElementById('usuariosTbody').innerHTML='<tr><td colspan="7"><div class="empty">No hay usuarios</div></td></tr>';return;}
+  document.getElementById('usuariosTbody').innerHTML=allProfiles.map((p,i)=>`<tr>
+    <td><span style="display:flex;align-items:center;gap:7px">
+      <span style="width:8px;height:8px;border-radius:50%;background:${TEC_COLORS[i%TEC_COLORS.length]};display:inline-block"></span>${p.nombre}
+    </span></td>
+    <td style="color:var(--text2);font-size:11px">${p.email||'—'}</td>
+    <td><span class="badge ${p.role==='admin'?'b-amber':'b-blue'}">${p.role==='admin'?'Admin':'User'}</span></td>
+    <td>${p.role==='admin'?'<span class="badge b-green">Sí</span>':'<span class="badge b-red">No</span>'}</td>
+    <td>${p.role==='admin'?'<span class="badge b-green">Sí</span>':'<span class="badge b-red">No</span>'}</td>
+    <td><span class="badge b-green">Activo</span></td>
+    <td><button class="btn btn-sm" onclick="toggleRole('${p.id}','${p.role}')">Cambiar rol</button></td>
+  </tr>`).join('');
+}
+
+// CALENDAR
+function buildCalendar(){
+  const ws=getWeekStart(calWeekOffset);
+  document.getElementById('calTitle').textContent=formatWeekLabel(ws);
+  const dias=['Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const hours=['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
+  let html=`<div class="cal-head"></div>${dias.map((d,i)=>{const dd=new Date(ws);dd.setDate(ws.getDate()+i);return `<div class="cal-head">${d} ${dd.getDate()}</div>`}).join('')}`;
+  const diaMap=['lun','mar','mie','jue','vie','sab'];
+  hours.forEach(h=>{
+    html+=`<div class="cal-time">${h}</div>`;
+    for(let d=0;d<6;d++){
+      const diaTKey=diaMap[d];
+      const dd=new Date(ws);dd.setDate(ws.getDate()+d);
+      const ddStr=dd.toISOString().slice(0,10);
+      const evs=trabajos.filter(t=>t.fecha_exacta===ddStr);
+      const evHTML=evs.map(t=>{
+        const est=lastEstado(t);
+        const cls=['terminado','cobrado','terminado-mensual'].includes(est)?'ev-green':est==='pendiente'||est==='en-espera'?'ev-red':'ev-amber';
+        return `<div class="cal-ev ${cls}" onclick="editTrabajo('${t.id}')" title="${t.tarea}">${t.cliente} ${t.tecnico_nombre?'@'+t.tecnico_nombre.split(' ')[0]:''}</div>`;
+      });
+      html+=`<div class="cal-cell" onclick="openModal('trabajo-modal');resetTrabajoForm();document.getElementById('t_dia').value='${diaTKey}'">${evHTML.join('')}</div>`;
+    }
+  });
+  document.getElementById('calGrid').innerHTML=html;
+}
+function calPrev(){calWeekOffset--;buildCalendar()}
+function calNext(){calWeekOffset++;buildCalendar()}
+
+// TRABAJOS CRUD
+function resetTrabajoForm(){
+  document.getElementById('trabajoId').value='';
+  document.getElementById('trabajoModalTitle').textContent='Nuevo trabajo';
+  ['t_cliente','t_tarea','t_resultado','t_precio','t_notas'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('t_estado').value='';
+  document.getElementById('t_dia').value=new Date().toISOString().slice(0,10);
+  document.getElementById('t_tecnico').value='';
+}
+
+async function saveTrabajo(){
+  const id=document.getElementById('trabajoId').value;
+  const tecId=document.getElementById('t_tecnico').value;
+  const tec=allProfiles.find(p=>p.id===tecId);
+  const diaStr=document.getElementById('t_dia').value;
+  const estado=document.getElementById('t_estado').value;
+  const diaDate=diaStr?new Date(diaStr+'T12:00:00'):new Date();
+  const dayOfWeek=diaDate.getDay();
+  const monday=new Date(diaDate);
+  monday.setDate(diaDate.getDate()-((dayOfWeek+6)%7));
+  const diaMap=['lun','mar','mie','jue','vie','sab'];
+  const diaDiff=((dayOfWeek+6)%7);
+  const diaCol=diaMap[Math.min(diaDiff,5)];
+  const data={
+    cliente:document.getElementById('t_cliente').value.trim(),
+    tarea:document.getElementById('t_tarea').value.trim(),
+    resultado:document.getElementById('t_resultado').value.trim(),
+    precio:document.getElementById('t_precio').value.trim(),
+    notas:document.getElementById('t_notas').value.trim(),
+    tecnico_id:tecId||null,
+    tecnico_nombre:tec?.nombre||null,
+    fecha_exacta:diaStr||null,
+    semana_inicio:monday.toISOString().slice(0,10),
+    updated_at:new Date().toISOString(),
+  };
+  if(estado) data['estado_'+diaCol]=estado;
+
+  if(id){
+    await sb.from('trabajos').update(data).eq('id',id);
+  } else {
+    data.created_by=currentUser.id;
+    await sb.from('trabajos').insert(data);
+  }
+  closeModal('trabajo-modal');
+  await loadData();
+}
+
+function editTrabajo(id){
+  const t=trabajos.find(x=>x.id===id);if(!t)return;
+  document.getElementById('trabajoId').value=t.id;
+  document.getElementById('trabajoModalTitle').textContent='Editar trabajo';
+  document.getElementById('t_cliente').value=t.cliente;
+  document.getElementById('t_tarea').value=t.tarea;
+  document.getElementById('t_resultado').value=t.resultado||'';
+  document.getElementById('t_precio').value=t.precio||'';
+  document.getElementById('t_notas').value=t.notas||'';
+  populateTecSelects();
+  setTimeout(()=>{ document.getElementById('t_tecnico').value=t.tecnico_id||''; },50);
+  document.getElementById('t_dia').value=t.fecha_exacta||new Date().toISOString().slice(0,10);
+  const last=lastEstado(t);
+  document.getElementById('t_estado').value=last;
+  openModal('trabajo-modal');
+}
+
+async function deleteTrabajo(id){
+  if(!confirm('¿Eliminar este trabajo?'))return;
+  await sb.from('trabajos').delete().eq('id',id);
+  await loadData();
+}
+
+async function updateEstado(id,dia,val){
+  await sb.from('trabajos').update({['estado_'+dia]:val,updated_at:new Date().toISOString()}).eq('id',id);
+  const t=trabajos.find(x=>x.id===id);
+  if(t) t['estado_'+dia]=val;
+  updateMetrics();
+}
+
+// PRESUPUESTOS CRUD
+function resetPresForm(){
+  document.getElementById('presId').value='';
+  document.getElementById('presModalTitle').textContent='Nuevo presupuesto';
+  ['p_cliente','p_desc','p_monto','p_weekly'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p_estado').value='activo';
+  document.getElementById('p_tecnico').value='';
+}
+
+async function savePres(){
+  const id=document.getElementById('presId').value;
+  const tecId=document.getElementById('p_tecnico').value;
+  const tec=allProfiles.find(p=>p.id===tecId);
+  const data={
+    cliente:document.getElementById('p_cliente').value.trim(),
+    descripcion:document.getElementById('p_desc').value.trim(),
+    monto:document.getElementById('p_monto').value.trim(),
+    estado:document.getElementById('p_estado').value,
+    responsable_id:tecId||null,
+    responsable_nombre:tec?.nombre||null,
+    weekly_novedad:document.getElementById('p_weekly').value.trim(),
+    updated_at:new Date().toISOString(),
+  };
+  if(id){
+    await sb.from('presupuestos').update(data).eq('id',id);
+  } else {
+    data.created_by=currentUser.id;
+    await sb.from('presupuestos').insert(data);
+  }
+  closeModal('pres-modal');
+  await loadData();
+}
+
+function editPres(id){
+  const p=presupuestos.find(x=>x.id===id);if(!p)return;
+  document.getElementById('presId').value=p.id;
+  document.getElementById('presModalTitle').textContent='Editar presupuesto';
+  document.getElementById('p_cliente').value=p.cliente;
+  document.getElementById('p_desc').value=p.descripcion;
+  document.getElementById('p_monto').value=p.monto||'';
+  document.getElementById('p_estado').value=p.estado;
+  document.getElementById('p_tecnico').value=p.responsable_id||'';
+  document.getElementById('p_weekly').value=p.weekly_novedad||'';
+  openModal('pres-modal');
+}
+
+async function deletePres(id){
+  if(!confirm('¿Eliminar este presupuesto?'))return;
+  await sb.from('presupuestos').delete().eq('id',id);
+  await loadData();
+}
+
+// WEEKLY PANEL
+function openWeeklyPanel(id){
+  const t=trabajos.find(x=>x.id===id);if(!t)return;
+  weeklyPanelTrabajoId=id;
+  document.getElementById('weeklyPanelCliente').textContent=`${t.cliente} — ${t.tarea}`;
+  document.getElementById('wp_novedad').value=t.weekly_novedad||'';
+  document.getElementById('wp_dificultad').value=t.weekly_dificultad||'';
+  document.getElementById('wp_proyecto').value=t.weekly_proyecto||'';
+  document.getElementById('wp_gran_cliente').value=t.weekly_gran_cliente||'';
+  document.getElementById('wp_ventas').value=t.weekly_ventas||'';
+  document.getElementById('wp_compras').value=t.weekly_compras||'';
+  document.getElementById('weeklyPanel').classList.add('open');
+}
+
+function closeSidePanel(){
+  document.getElementById('weeklyPanel').classList.remove('open');
+  weeklyPanelTrabajoId=null;
+}
+
+async function saveWeeklyPanel(){
+  if(!weeklyPanelTrabajoId)return;
+  await sb.from('trabajos').update({
+    weekly_novedad:document.getElementById('wp_novedad').value,
+    weekly_dificultad:document.getElementById('wp_dificultad').value,
+    weekly_proyecto:document.getElementById('wp_proyecto').value,
+    weekly_gran_cliente:document.getElementById('wp_gran_cliente').value,
+    weekly_ventas:document.getElementById('wp_ventas').value,
+    weekly_compras:document.getElementById('wp_compras').value,
+    updated_at:new Date().toISOString(),
+  }).eq('id',weeklyPanelTrabajoId);
+  closeSidePanel();
+  await loadData();
+}
+
+// USUARIOS
+function selRole(r){
+  selectedRole=r;
+  document.getElementById('roleUser').classList.toggle('sel',r==='user');
+  document.getElementById('roleAdmin').classList.toggle('sel',r==='admin');
+}
+
+async function createUser(){
+  const nombre=document.getElementById('u_nombre').value.trim();
+  const email=document.getElementById('u_email').value.trim();
+  const pass=document.getElementById('u_pass').value;
+  document.getElementById('userErr').textContent='';
+  if(!nombre||!email||!pass){document.getElementById('userErr').textContent='Completá todos los campos';return;}
+  const {data,error}=await sb.auth.admin.createUser({email,password:pass,email_confirm:true});
+  if(error){
+    // Fallback: sign up
+    const {data:d2,error:e2}=await sb.auth.signUp({email,password:pass});
+    if(e2){document.getElementById('userErr').textContent='Error: '+e2.message;return;}
+    await sb.from('profiles').insert({id:d2.user.id,nombre,role:selectedRole});
+  } else {
+    await sb.from('profiles').insert({id:data.user.id,nombre,role:selectedRole});
+  }
+  closeModal('user-modal');
+  await loadAllProfiles();
+  renderUsuarios();
+}
+
+async function toggleRole(id,current){
+  const newRole=current==='admin'?'user':'admin';
+  if(!confirm(`¿Cambiar a ${newRole}?`))return;
+  await sb.from('profiles').update({role:newRole}).eq('id',id);
+  await loadAllProfiles();
+  renderUsuarios();
+}
+
+// WEEKLY DOC
+function descargarWeekly(){
+  const SECTIONS=[
+    {key:'novedad',label:'1. PRINCIPALES NOVEDADES'},
+    {key:'dificultad',label:'2. PRINCIPALES DIFICULTADES'},
+    {key:'ventas',label:'3. VENTAS'},
+    {key:'compras',label:'4. COMPRAS'},
+    {key:'gran_cliente',label:'5. ACTUALIZACIÓN GRANDES CLIENTES'},
+    {key:'proyecto',label:'6. ACTUALIZACIÓN PROYECTOS'},
+  ];
+  const ws=getWeekStart();
+  let html=`<html><head><meta charset="UTF-8"></head><body style="font-family:Arial;margin:2cm">
+    <h1 style="color:#1a2f8c;text-align:center;font-size:20pt">EVOLUCIÓN WEEKLY</h1>
+    <p style="text-align:center;color:#888;font-style:italic">${formatWeekLabel(ws)}</p><br>`;
+  SECTIONS.forEach(s=>{
+    html+=`<h2 style="color:#1a2f8c;border-bottom:2pt solid #1a2f8c;padding-bottom:4pt;font-size:14pt">${s.label}</h2>`;
+    allProfiles.forEach(p=>{
+      const el=document.getElementById(`w_${s.key}_${p.id}`);
+      if(el&&el.value&&el.value!=='Sin novedades.'){
+        html+=`<p><strong>${p.nombre}:</strong> ${el.value}</p>`;
+      }
+    });
+    const gen=document.getElementById(`w_${s.key}_general`);
+    if(gen&&gen.value&&gen.value!=='Sin novedades.'){
+      html+=`<p><strong>General:</strong> ${gen.value}</p>`;
+    }
+    html+='<br>';
+  });
+  html+='</body></html>';
+  const blob=new Blob([html],{type:'application/msword'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`Weekly_Evolucion_${ws.toISOString().slice(0,10)}.doc`;
+  a.click();
+}
+
+// NAVIGATION
+function showPage(page,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
+  document.getElementById('page-'+page).classList.add('show');
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const titles={panel:'Panel semanal',calendar:'Calendario',trabajos:'Trabajos',presupuestos:'Presupuestos',weekly:'Weekly',dashboard:'Dashboard',usuarios:'Usuarios'};
+  document.getElementById('pageTitle').textContent=titles[page]||page;
+  document.getElementById('pageSub').textContent=page==='panel'||page==='weekly'?formatWeekLabel(getWeekStart()):'';
+  document.getElementById('topActions').style.display=['panel','trabajos','presupuestos'].includes(page)?'flex':'none';
+  if(page==='calendar')buildCalendar();
+  if(page!=='trabajos'&&page!=='panel'){tecFilter=null;document.getElementById('trabajosTitle').textContent='Todos los trabajos';}
+}
+
+function filterTec(id,nombre,el){
+  tecFilter=id;
+  showPage('trabajos',el);
+  document.getElementById('trabajosTitle').textContent=nombre+' — trabajos';
+  renderPanel();renderTrabajos();updateMetrics();
+}
+
+function goDash(){
+  if(currentProfile?.role!=='admin'){alert('Solo los administradores pueden acceder al Dashboard.');return;}
+  showPage('dashboard',document.getElementById('navDash'));
+  renderDashboard();
+}
+
+function goUsers(){
+  if(currentProfile?.role!=='admin'){alert('Solo los administradores pueden gestionar usuarios.');return;}
+  showPage('usuarios',document.getElementById('navUsers'));
+}
+
+function setDashTab(tab,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('dTrabSub').textContent=tab==='semana'?'esta semana':'este mes';
+}
+
+// MODALS
+function openModal(id){document.getElementById(id).classList.add('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+document.querySelectorAll('.modal-backdrop').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show')}));
+
+// INIT
+sb.auth.onAuthStateChange(async(event,session)=>{
+  if(session?.user&&!currentUser){
+    currentUser=session.user;
+    await loadProfile();
+    if(currentProfile) startApp();
+  }
+});
+</script>
+</body>
+</html>
